@@ -8,7 +8,7 @@ import matplotlib.cm as cm
 import matplotlib.colors as colors
 import os
 
-# ---- 데이터 로딩 함수 ----
+# ---- 1. 데이터 로딩 ----
 @st.cache_data
 def load_data():
     if os.path.exists("부산여행.pkl"):
@@ -16,16 +16,15 @@ def load_data():
     else:
         df = pd.read_csv("부산여행_여행일수포함_분리추가.csv")
         df["VISIT_ORDER"] = df["VISIT_ORDER"].astype(int)
-        df.to_pickle("부산여행.pkl")  # 최초 1회만 저장
+        df.to_pickle("부산여행.pkl")
     return df
 
-# ---- 데이터 로딩 ----
 if "df" not in st.session_state:
     st.session_state.df = load_data()
 
 df = st.session_state.df
 
-# ---- 드롭다운 필터 ----
+# ---- 2. 필터 UI ----
 days_options = ["전체"] + sorted(df["여행일수"].dropna().unique())
 residence_options = ["전체"] + sorted(df["거주지"].dropna().str.strip().unique())
 age_options = ["전체"] + sorted(df["연령대"].dropna().str.strip().unique())
@@ -41,7 +40,7 @@ with col3:
 with col4:
     selected_companion = st.selectbox("동행유형 선택", companion_options)
 
-# ---- 필터링 ----
+# ---- 3. 필터링 ----
 df_filtered = df.copy()
 if selected_days != "전체":
     df_filtered = df_filtered[df_filtered["여행일수"] == selected_days]
@@ -52,7 +51,6 @@ if selected_age != "전체":
 if selected_companion != "전체":
     df_filtered = df_filtered[df_filtered["동행유형"].str.strip() == selected_companion]
 
-# ---- 유효 ID 기준 필터링 ----
 valid_ids = df_filtered["TRAVEL_ID"].unique()
 if len(valid_ids) > 30:
     st.warning("TRAVEL_ID가 너무 많습니다. 필터를 더 좁혀주세요. (현재: %d개)" % len(valid_ids))
@@ -60,8 +58,15 @@ if len(valid_ids) > 30:
 
 df_filtered = df[df["TRAVEL_ID"].isin(valid_ids)]
 
-# ---- 지도 보기 버튼 ----
+# ---- 4. 버튼 상태 저장 ----
+if "show_map" not in st.session_state:
+    st.session_state.show_map = False
+
 if st.button("지도 보기"):
+    st.session_state.show_map = True
+
+# ---- 5. 지도 시각화 ----
+if st.session_state.show_map:
     norm = colors.Normalize(vmin=df_filtered["VISIT_ORDER"].min(), vmax=df_filtered["VISIT_ORDER"].max())
     cmap = cm.get_cmap("Blues")
     m = Map(location=[35.1796, 129.0756], zoom_start=12)
